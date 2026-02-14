@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Valentine CTF — Alexa</title>
+
+    <!-- Bootstrap 5 (solo CSS) -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #0f172a;
+        --card-bg: rgba(255, 255, 255, 0.95);
+        --card-border: rgba(15, 23, 42, 0.12);
+        --muted: rgba(15, 23, 42, 0.65);
+
+        --btn: #0f172a;
+        --btn-fg: #ffffff;
+
+        --term-green: #34d399; /* “terminal green” */
+        --shadow: 0 10px 30px rgba(2, 6, 23, 0.12);
+
+        --radius: 18px;
+        --t: 300ms;
+      }
+
+      /* Dark mode variables */
+      body.dark {
+        --bg: #0b1220;
+        --fg: rgba(255, 255, 255, 0.92);
+        --card-bg: rgba(17, 24, 39, 0.6);
+        --card-border: rgba(255, 255, 255, 0.12);
+        --muted: rgba(255, 255, 255, 0.68);
+
+        --btn: rgba(52, 211, 153, 0.9);
+        --btn-fg: #04130c;
+
+        --shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+      }
+
+      /* Page base */
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        transition: background var(--t) ease, color var(--t) ease;
+        min-height: 100vh;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px;
+      }
+
+      /* Card shell */
+      .shell {
+        width: 100%;
+        max-width: 520px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        transition: all var(--t) ease;
+        overflow: hidden;
+      }
+
+      .shell-inner {
+        padding: 22px;
+      }
+
+      @media (min-width: 576px) {
+        .shell-inner {
+          padding: 28px;
+        }
+      }
+
+      .subtle {
+        color: var(--muted);
+      }
+
+      /* Toggle */
+      .mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.06);
+        transition: all var(--t) ease;
+        user-select: none;
+      }
+
+      .mode-toggle:hover {
+        transform: translateY(-1px);
+      }
+
+      .switch {
+        width: 52px;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.7);
+        position: relative;
+        transition: all var(--t) ease;
+      }
+
+      body.dark .switch {
+        background: rgba(52, 211, 153, 0.9);
+      }
+
+      .knob {
+        position: absolute;
+        top: 3px;
+        left: 4px;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: #fff;
+        transition: all var(--t) ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
+      }
+
+      body.dark .knob {
+        left: 26px;
+      }
+
+      /* Inputs */
+      .form-control {
+        border-radius: 14px;
+        border-color: var(--card-border);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--fg);
+        transition: all var(--t) ease;
+      }
+
+      body.dark .form-control {
+        background: rgba(3, 7, 18, 0.35);
+      }
+
+      .form-control:focus {
+        box-shadow: 0 0 0 0.25rem rgba(52, 211, 153, 0.22);
+        border-color: rgba(52, 211, 153, 0.55);
+      }
+
+      /* Primary button */
+      .btn-primary-custom {
+        border: none;
+        background: var(--btn);
+        color: var(--btn-fg);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-weight: 700;
+        transition: all var(--t) ease;
+      }
+
+      .btn-primary-custom:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+      }
+
+      .btn-primary-custom:active {
+        transform: scale(0.99);
+      }
+
+      /* Hint trick (steganography) */
+      .hint {
+        transition: color var(--t) ease;
+        font-size: 0.95rem;
+        margin-bottom: 0;
+      }
+      /* Light mode: invisible (same as bg) */
+      body:not(.dark) .hint {
+        color: var(--bg); /* same as background => hidden */
+      }
+      /* Dark mode: visible */
+      body.dark .hint {
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      /* Error box */
+      .error-box {
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        background: rgba(239, 68, 68, 0.12);
+        color: rgba(254, 226, 226, 0.95);
+        border-radius: 14px;
+        padding: 12px 14px;
+        transition: all var(--t) ease;
+      }
+
+      /* Rewards screen */
+      .rewards {
+        width: 100%;
+        max-width: 1100px;
+        padding: 10px 0;
+      }
+
+      .terminal-header {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        color: var(--term-green);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      /* Coupon cards */
+      .coupon {
+        position: relative;
+        overflow: hidden;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.06);
+        box-shadow: var(--shadow);
+        aspect-ratio: 4 / 3;
+        transition: transform var(--t) ease, box-shadow var(--t) ease;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .coupon:hover {
+        transform: translateY(-2px);
+      }
+
+.coupon-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-size: cover;
+  background-position: center;
+  transition: transform var(--t) ease, filter var(--t) ease;
+}
+
+
+      .coupon:hover .coupon-bg,
+      .coupon.revealed .coupon-bg {
+        transform: scale(1.06);
+        filter: blur(2px);
+      }
+
+      .coupon-tag {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 3;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        font-size: 0.78rem;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: rgba(167, 243, 208, 0.95);
+        backdrop-filter: blur(6px);
+      }
+
+      .coupon-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        background: rgba(0, 0, 0, 0.68);
+        backdrop-filter: blur(2px);
+        transform: translateY(100%);
+        transition: transform var(--t) ease;
+      }
+
+      .coupon:hover .coupon-overlay,
+      .coupon.revealed .coupon-overlay {
+        transform: translateY(0);
+      }
+
+      .coupon-text {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        text-align: center;
+        opacity: 0;
+        transition: opacity var(--t) ease;
+      }
+
+      .coupon:hover .coupon-text,
+      .coupon.revealed .coupon-text {
+        opacity: 1;
+      }
+
+      .coupon-text .main {
+        color: #fff;
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+
+      .coupon-text .meta {
+        margin-top: 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        font-size: 0.78rem;
+        color: rgba(167, 243, 208, 0.95);
+      }
+
+      .footer-mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        color: var(--muted);
+        font-size: 0.82rem;
+      }
+
+      /* Hide/show screens */
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="app">
+      <!-- SCREEN 1: LOGIN -->
+      <section id="screen-login" class="shell" aria-label="Login screen">
+        <div class="shell-inner">
+          <div class="d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <h1 class="mb-1 fw-bold" style="letter-spacing: -0.02em;">Acceso seguro</h1>
+              <p class="mb-0 subtle">
+                Nivel: San Valentín 
+              </p>
+            </div>
+
+            <!-- Toggle -->
+            <button id="toggle-mode" class="mode-toggle" type="button" aria-label="Cambiar modo">
+              <span id="mode-label" class="fw-semibold" style="font-size: 0.85rem;">Light</span>
+              <span class="switch" aria-hidden="true">
+                <span class="knob"></span>
+              </span>
+            </button>
+          </div>
+
+          <form id="login-form" class="mt-4">
+            <label class="form-label subtle fw-semibold mb-2">Contraseña</label>
+            <input
+              id="password"
+              class="form-control"
+              type="password"
+              placeholder="Ingresa el secreto…"
+              autocomplete="off"
+            />
+
+            <button class="btn btn-primary-custom w-100 mt-3" type="submit">
+              Entrar
+            </button>
+
+            <div id="error" class="mt-3 hidden error-box"></div>
+
+            <!-- Hint (steganography) -->
+            <div class="mt-3">
+              <p class="hint">
+                Pista: Nombre del juego en el que nunca te ganaré (no lo tenemos)
+              </p>
+              <p class="subtle mt-2 mb-0" style="font-size: 0.82rem;">
+                
+              </p>
+            </div>
+          </form>
+        </div>
+
+        <div class="px-4 pb-3">
+          <div class="d-flex align-items-center justify-content-between footer-mono">
+            <span>STATUS: LOCKED</span>
+            <span>v1.0</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCREEN 2: REWARDS -->
+      <section id="screen-rewards" class="rewards hidden" aria-label="Rewards screen">
+        <header class="mb-4">
+          <h2 class="terminal-header">
+            [ SISTEMA VULNERADO: 6 CUPONES DESBLOQUEADOS PARA ALEXA ]
+          </h2>
+          <p class="subtle mb-0">
+            Hover en desktop o tap en móvil para revelar el “payload”.
+          </p>
+        </header>
+
+        <div class="row g-3" id="coupon-grid">
+          <!-- Cards injected by JS -->
+        </div>
+
+        <div class="mt-4 footer-mono">
+          LOG: exploit_success=true · target=Alexa · hearts=∞
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // ====== CONFIG ======
+      // Cambia la contraseña aquí:
+      const CORRECT_PASSWORD = "fantasmaBlitz";
+
+      const COUPONS = [
+        { title: "Cupón #01", text: "Vale por: Una carrera corriendo juntos (no más de 21 km)" },
+        { title: "Cupón #02", text: "Vale por: Una salida a las estacas (llevamos lunch para economizar)" },
+        { title: "Cupón #03", text: "Vale por: Una salida de fiesta sin que pueda objetar ni quejarme (después de 1 am ya me puedo quejar)" },
+        { title: "Cupón #04", text: "Vale por: Unas porras a una carrera/evento (no tengo que estar inscrito)" },
+        { title: "Cupón #05", text: "Vale por: Una comida después de una competencia larga (más de 70.2 millas)" },
+        { title: "Cupón #06", text: "Vale por: Una inscripción de carrera a escoger (no más de $1,500)" },
+      ];
+
+      // Puedes cambiar a fotos reales luego
+ const IMAGES = [
+  "img/01.jpeg",
+  "img/02.jpeg",
+  "img/03.jpeg",
+  "img/04.jpeg",
+  "img/05.jpeg",
+  "img/06.jpeg",
+];
+
+
+      // ====== STATE ======
+      let isDarkMode = false;
+      let isAuthenticated = false;
+
+      // ====== DOM ======
+      const screenLogin = document.getElementById("screen-login");
+      const screenRewards = document.getElementById("screen-rewards");
+
+      const toggleModeBtn = document.getElementById("toggle-mode");
+      const modeLabel = document.getElementById("mode-label");
+
+      const loginForm = document.getElementById("login-form");
+      const passwordInput = document.getElementById("password");
+      const errorBox = document.getElementById("error");
+
+      const couponGrid = document.getElementById("coupon-grid");
+
+      // ====== HELPERS ======
+      function setDarkMode(next) {
+        isDarkMode = next;
+        document.body.classList.toggle("dark", isDarkMode);
+        modeLabel.textContent = isDarkMode ? "Dark" : "Light";
+      }
+
+      function showError(msg) {
+        errorBox.textContent = msg;
+        errorBox.classList.remove("hidden");
+      }
+
+      function clearError() {
+        errorBox.textContent = "";
+        errorBox.classList.add("hidden");
+      }
+
+      function setAuthenticated(next) {
+        isAuthenticated = next;
+
+        if (isAuthenticated) {
+          screenLogin.classList.add("hidden");
+          screenRewards.classList.remove("hidden");
+          passwordInput.value = "";
+          clearError();
+          renderCoupons();
+        } else {
+          screenRewards.classList.add("hidden");
+          screenLogin.classList.remove("hidden");
+        }
+      }
+
+      function renderCoupons() {
+        couponGrid.innerHTML = "";
+
+        // Bootstrap grid: 1 col (mobile), 2 (md), 3 (lg)
+        COUPONS.forEach((c, i) => {
+          const col = document.createElement("div");
+          col.className = "col-12 col-md-6 col-lg-4";
+
+          const card = document.createElement("div");
+          card.className = "coupon";
+          card.setAttribute("role", "button");
+          card.setAttribute("tabindex", "0");
+          card.setAttribute("aria-label", `Revelar ${c.title}`);
+
+          const bg = document.createElement("div");
+          bg.className = "coupon-bg";
+
+          bg.style.backgroundImage = `url('${IMAGES[i] || IMAGES[0]}')`;
+
+
+          const tag = document.createElement("div");
+          tag.className = "coupon-tag";
+          tag.textContent = c.title;
+
+          const overlay = document.createElement("div");
+          overlay.className = "coupon-overlay";
+
+          const text = document.createElement("div");
+          text.className = "coupon-text";
+          text.innerHTML = `
+            <div>
+              <div class="main">${c.text}</div>
+            </div>
+          `;
+
+          card.appendChild(bg);
+          card.appendChild(tag);
+          card.appendChild(overlay);
+          card.appendChild(text);
+
+          // Tap/click toggles reveal (mobile friendly)
+          card.addEventListener("click", () => {
+            card.classList.toggle("revealed");
+          });
+
+          // Keyboard accessibility
+          card.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              card.classList.toggle("revealed");
+            }
+          });
+
+          col.appendChild(card);
+          couponGrid.appendChild(col);
+        });
+      }
+
+      // ====== EVENTS ======
+      toggleModeBtn.addEventListener("click", () => setDarkMode(!isDarkMode));
+
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        clearError();
+
+        const value = (passwordInput.value || "").trim();
+        if (value === CORRECT_PASSWORD) {
+          setAuthenticated(true);
+        } else {
+          showError("Acceso denegado.");
+        }
+      });
+
+      // ====== INIT ======
+      setDarkMode(false);
+      setAuthenticated(false);
+    </script>
+  </body>
+</html>
